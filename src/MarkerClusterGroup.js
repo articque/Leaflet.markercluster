@@ -146,7 +146,9 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 		//Remove the marker from clusters
 		this._removeLayer(layer, true);
 
-		layer.off('move', this._childMarkerMoved, this);
+		layer.off('dragstart', this._childMarkerMoveStart, this);
+		layer.off('drag', this._childMarkerMove, this);
+		layer.off('dragend', this._childMarkerMoved, this);
 
 		if (this._featureGroup.hasLayer(layer)) {
 			this._featureGroup.removeLayer(layer);
@@ -312,7 +314,9 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 		this._nonPointGroup.clearLayers();
 
 		this.eachLayer(function (marker) {
-			marker.off('move', this._childMarkerMoved, this);
+			marker.off('dragstart', this._childMarkerMoveStart, this);
+			marker.off('drag', this._childMarkerMove, this);
+			marker.off('dragend', this._childMarkerMoved, this);
 			delete marker.__parent;
 		});
 
@@ -523,12 +527,21 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 		}
 	},
 
+	_childMarkerMoveStart: function (e) {
+		e.target._oldlatlng = L.latLng(e.target.getLatLng().lat, e.target.getLatLng().lng);
+		e.target._latlng = e.target._oldlatlng;
+	},
+
+	_childMarkerMove: function (e) {
+		e.target._newlatlng = e.target.getLatLng();
+	},
+
 	_childMarkerMoved: function (e) {
 		if (!this._ignoreMove) {
-			e.target._latlng = e.oldLatLng;
+			e.target._latlng = e.target._oldlatlng;
 			this.removeLayer(e.target);
 
-			e.target._latlng = e.latlng;
+			e.target._latlng = e.target._newlatlng;
 			this.addLayer(e.target);
 		}
 		return;
@@ -783,7 +796,9 @@ L.MarkerClusterGroup = L.FeatureGroup.extend({
 			});
 		}
 
-		layer.on('move', this._childMarkerMoved, this);
+		layer.on('dragstart', this._childMarkerMoveStart, this);
+		layer.on('drag', this._childMarkerMove, this);
+		layer.on('dragend', this._childMarkerMoved, this);
 
 		//Find the lowest zoom level to slot this one in
 		for (; zoom >= 0; zoom--) {
